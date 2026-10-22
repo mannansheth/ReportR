@@ -1,0 +1,654 @@
+# Migration Report 3: Pre-Flight Investigation
+
+Audit date: 2026-09-03
+Scope: focused repository investigation for React Native/Expo to Flutter migration.
+Constraint honored: no application source was modified.
+
+## Executive Summary
+
+Confirmed from code: the Flutter migration can keep the Node/Express backend unchanged only if the client preserves several exact contracts: push-token-first Android OTP, JSON prediction payloads containing base64 image data, multipart report upload field names, local report metadata shape, English status strings, and the Leaflet WebView message protocol.
+
+The largest migration risks are not screen rendering. They are native/client orchestration: Firebase Messaging before login, camera/gallery image handling, EXIF GPS precedence, current-location fallback, reverse geocoding, PDF generation from a fixed Canva template, M4A audio upload/transcription, and the Leaflet WebView bridge.
+
+Important confirmed gaps in the current app:
+
+- Android FCM token refresh calls undefined `setFcmToken` in `frontend/App.js`.
+- `Alert` is used in `frontend/App.js` but not imported.
+- iOS new-user login bypasses backend OTP and creates a local-only user ID.
+- Report upload is called without `await` in `frontend/component/CameraPage/ReportForm.jsx`.
+- Pending report storage exists, but no sync worker was found.
+- Backend transcription uses a fixed `temp.mp3`, which is race-prone.
+- Database schema/migrations are not present; table shape can only be inferred from SQL.
+
+## Confirmed Technical Requirements
+
+Confirmed from code:
+
+- Backend base URL is read from `EXPO_PUBLIC_BACKEND_URL` in frontend services. Flutter needs an equivalent app config value.
+- Client session persists as SecureStore key `userDetails` with JSON `{ id, name, number }`.
+- Non-secure local keys are `token`, `user-language`, and `pendingReports`.
+- Report IDs are client-generated as `Rid_${year}${uuidNoDashFirst4}`.
+- Report local folders are `reports/{reportID}/` under app document storage.
+- Report local files are `image.jpeg`, optional `audio.m4a`, `data.json`, and generated `report.pdf`.
+- Status values are English business strings: `Issue Raised`, `Verification pending`, `Invalid Report`, `In Progress`, `Resolved`.
+- User can resolve/review only when within 200 meters of marker location; review is local UI only.
+
+Inferred:
+
+- Existing backend and DB expect client-generated report IDs to be unique.
+- Map/status filters should keep comparing backend English strings, even under localized UI.
+
+Unknown:
+
+- Production DB constraints, indexes, nullable rules, and foreign keys.
+- Whether another service updates reports to `In Progress` or `Resolved`.
+
+## Android Requirements
+
+Confirmed from `frontend/app.json`, `frontend/google-services.json`, and source:
+
+- Android application ID/package: `com.reportr.frontend`.
+- Firebase Android app:
+  - `project_id`: `reportr-8dddb`
+  - `project_number`: `48225244825`
+  - `mobilesdk_app_id`: `1:48225244825:android:476fed625f2977bfb9ca08`
+  - package must match `com.reportr.frontend` unless a new Firebase app is created.
+- Required permissions by behavior:
+  - camera, from `expo-camera` use in `CameraScreen.jsx` / `CameraUI.jsx`.
+  - microphone/record audio, from `Audio.requestPermissionsAsync()` and app config `android.permission.RECORD_AUDIO`.
+  - modify audio settings, from app config `android.permission.MODIFY_AUDIO_SETTINGS`.
+  - foreground location, from `expo-location` in camera and map flows.
+  - Android 13+ `POST_NOTIFICATIONS`, explicitly requested through `PermissionsAndroid`.
+  - internet/network access, required for backend, FCM, Cloudinary URLs, Leaflet CDN, and OSM tiles.
+  - file/media picker access, currently through document picker with `type: ["image/*"]`.
+- Notification channel:
+  - channel ID: `default`
+  - channel name: `Default`
+  - importance: high
+  - backend FCM payload also uses `android.notification.channelId = "default"`.
+- Firebase Messaging:
+  - token requested on Android only.
+  - foreground FCM messages are displayed through Expo Notifications as immediate local notifications.
+  - background handler logs only.
+- Camera native behavior:
+  - back/front camera switch.
+  - flash on/off.
+  - zoom range `0..1`, pinch changes by `scaleChange * 0.2`.
+  - `useCamera2Api={true}` is RN-specific; Flutter does not need that exact flag unless camera plugin/device behavior requires it.
+- Expo config plugins present: `expo-font`, `expo-asset`, `expo-audio`, `expo-secure-store`, `expo-localization`.
+
+Discard for Flutter:
+
+- Expo/EAS/Metro configuration: `frontend/app.json`, `frontend/eas.json`, `frontend/metro.config.js`, `frontend/index.js`.
+- Expo config plugins themselves.
+- RN gesture/reanimated/native stack/tab-view/paper native modules, replaced by Flutter equivalents.
+- `useCamera2Api` as a source-level Expo/RN prop.
+
+Unknown:
+
+- No committed Android native `android/` folder was found, so services/receivers/activities generated by Expo are not inspectable here.
+- No deep links, schemes, custom intents, or app links were found in the inspected source/config.
+
+## Backend/API Contract
+
+Base URL handling:
+
+- `frontend/services/mapServices.js` normalizes the backend URL to one trailing slash.
+- Other services concatenate `${backendURL}api/...`; the configured value must already be compatible.
+
+Endpoints Flutter must preserve:
+
+- `POST /api/user/sendOTP`
+  - JSON body: `{ name, phone, token }`
+  - Backend requires `phone` and `token`; `name` is accepted but not used for OTP storage.
+  - Success: HTTP 200 `{ success: true }`.
+  - Missing token/phone: HTTP 400 `{ success: false, message: "Phone and push token are required" }`.
+  - OTP is FCM notification body, not SMS.
+
+- `POST /api/user/verifyOTP`
+  - JSON body: `{ name, phone, otp, token }`
+  - Requires `phone`, `otp`, `name`; token is stored in `users`.
+  - Success: `{ success: true, user: { id, name, phone } }`.
+  - Invalid/expired OTP: HTTP 200 `{ success: false, message: "Invalid or expired OTP" }`.
+  - Backend inserts a new user on every valid verification; no existing-user lookup is performed.
+
+- `POST /api/user/sendNotification`
+  - JSON body: `{ Rid, name, userId }`
+  - Backend only uses `Rid` and `userId`; it fetches `users.token`.
+  - Success shape: `{ success: true }`.
+  - Missing token: `{ success: false, message: "Token not found," }`.
+  - Frontend incorrectly returns `response.data.status`, which is undefined.
+
+- `POST /api/getPredictions`
+  - JSON body: `{ base64Image, mimeType }`.
+  - Backend Express JSON limit is `10mb`.
+  - Returns Gemini-parsed array: `{ issue, probability, description, bounding_box }[]`.
+  - On Gemini failure backend returns `[]`; on route catch it sets HTTP 500 but does not send a body.
+
+- `POST /api/transcribeDescription`
+  - Multipart field: `audio`.
+  - Frontend file object: name `recording.m4a`, MIME `audio/m4a`.
+  - Axios timeout: 120 seconds.
+  - Success: `{ success: true, result: { text, confidence, duration } }`.
+  - Missing/empty file: HTTP 400 with `{ error }`.
+  - Catch path returns HTTP 200 `{ success: false }` but may throw while deleting `temp.mp3`.
+
+- `POST /api/user/submitReport`
+  - Multipart fields:
+    - `reportID`
+    - `userID`
+    - `name`
+    - `number`
+    - `category`
+    - `description`
+    - `location` as JSON string
+    - `createdDate`
+  - Multipart files:
+    - required `image`, frontend name `report_image.jpg`, MIME `image/jpeg`
+    - optional `audio`, name `report_audio.m4a`, MIME `audio/m4a`
+    - optional `pdf`, name `report.pdf`, MIME `application/pdf`
+  - Backend assumes `req.files.image[0]`; missing image will crash into HTTP 500.
+  - Backend verifies submitted image as `image/jpeg` regardless of uploaded file MIME.
+  - Success: `{ success: true, message, data: { reportID, userID, name, number, category, description, location, createdDate, imageURL, audioURL, pdfURL } }`.
+  - Failure: HTTP 500 `{ success: false, error: err.message }`.
+
+- `GET /api/reports/getAllReports`
+  - Returns marker array `{ Rid, lat, lng, status, color, userID }[]`.
+  - Parses `reports.location` JSON and maps status to RGBA color.
+
+- `POST /api/reports/getReportData`
+  - JSON body: `{ Rid }`.
+  - Returns `{ issue, description, imageURL, createdAt, status }`.
+  - Backend converts `createdAt` by appending `Z` and formatting `toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })`.
+  - If Rid not found, `rows[0]` access will throw and no response is sent.
+
+- `POST /api/reports/getReportByLocation`
+  - JSON body: `{ lat, lng }`.
+  - Query uses JSON_EXTRACT around `location.lat/lng`.
+  - Nearby means latitude and longitude each within `0.0001`, not Haversine distance.
+  - Returns rows `{ Rid, imageURL, issue, lat, lng }[]`.
+
+- `POST /api/user/getUserName`
+  - JSON body: `{ id }`.
+  - Returns `{ name, number }` or empty strings. Not observed in active frontend flow.
+
+No frontend authentication headers were found. There is no JWT/session token used in current API calls.
+
+## Authentication and FCM
+
+Confirmed Android startup flow:
+
+1. `frontend/App.js` conditionally imports `@react-native-firebase/messaging` only on Android.
+2. On app mount, Android calls `registerFCMToken()`.
+3. It calls `messaging().requestPermission()`.
+4. On Android API 33+, it requests `PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS`.
+5. It calls `messaging().getToken()`.
+6. It stores the token in AsyncStorage key `token`.
+7. It creates Expo notification channel `default`.
+8. Foreground FCM messages are shown through `Notifications.scheduleNotificationAsync({ trigger: null })`.
+9. Background messages are only logged.
+
+Confirmed login flow:
+
+1. `LoginScreen.jsx` reads AsyncStorage key `token` into `fcmToken`.
+2. If SecureStore `userDetails` exists:
+   - Android immediately `navigation.replace("Home")`.
+   - iOS attempts biometric auth if available/enrolled, then navigates home.
+3. New Android login:
+   - send OTP: `POST /api/user/sendOTP` with `{ name, phone, token: fcmToken }`.
+   - OTP arrives as FCM notification: title `OTP for ReportR`, body `Your OTP is ${otp}`.
+   - verify OTP: `POST /api/user/verifyOTP` with `{ name, phone, otp, token: fcmToken }`.
+   - stores SecureStore `userDetails` as `{ id: res.data.user.id.toString(), name: res.data.user.name, number: res.data.user.phone }`.
+4. New iOS login:
+   - bypasses backend completely.
+   - stores `{ id: Date.now(), name, number }`.
+
+Flutter must reproduce exactly for parity:
+
+- Firebase must initialize before token acquisition.
+- Notification permission/token acquisition must happen before Android OTP request.
+- Store FCM token under logical key `token`.
+- Create Android notification channel `default`.
+- Foreground messages must be surfaced visibly; FCM alone will not guarantee this in Flutter.
+- Store session JSON with `number`, not `phone`.
+- Restore session on cold start before showing login as the lasting route.
+
+Confirmed gaps/bugs:
+
+- `messaging().onTokenRefresh(newToken => setFcmToken(newToken))` calls undefined `setFcmToken` in `App.js`.
+- Refreshed FCM token is not persisted nor sent to backend after login.
+- Backend has no token-update endpoint.
+- `Alert` is used in `App.js` without import.
+- iOS local user IDs may not match any backend `users.id`, causing token lookup/report ownership inconsistencies.
+- OTP delivery through push notification can fail if notification permission/token acquisition fails.
+
+## Camera/Location/Prediction
+
+Confirmed camera capture:
+
+- Camera permission requested once in `CameraScreen.jsx` via `Camera.requestCameraPermissionsAsync()`.
+- `CameraUI.jsx` uses `CameraView`.
+- Photo capture uses `takePictureAsync({ base64: true })`.
+- Captured photo object is stored as `image`; expected fields include `uri`, `base64`, and optional `mimeType`.
+- Captured photos do not go through EXIF GPS parsing. The app immediately falls back to device GPS with `getReportLocation()`.
+
+Confirmed picked-image behavior:
+
+- Uses `DocumentPicker.getDocumentAsync({ type: ["image/*"], copyToCacheDirectory: true })`.
+- Copies `result.assets[0].uri` to `FileSystem.cacheDirectory + result.assets[0].name`.
+- Reads copied file as base64.
+- Builds a JPEG data URI regardless of actual MIME: `"data:image/jpeg;base64," + base64`.
+- Tries `piexif.load(dataUri)` and normalizes GPS.
+- Stores `image` as `{ uri: destUri, base64, mimeType: result.mimeType }`.
+- Sends `result.mimeType || "image/jpeg"` to prediction.
+
+EXIF GPS behavior:
+
+- `normalizeExif()` reads `exif.GPS[2]` latitude DMS, `exif.GPS[1]` latitude ref, `exif.GPS[4]` longitude DMS, `exif.GPS[3]` longitude ref.
+- Converts DMS rationals to decimal degrees.
+- Applies negative sign for `S` or `W`.
+- Rounds to 7 decimal places with `toFixed(7)` then `parseFloat`.
+- EXIF location is accepted only when both latitude/longitude are numbers and not zero.
+
+Fallback GPS and reverse geocoding:
+
+- If no valid EXIF GPS, requests foreground location.
+- Calls `Location.getCurrentPositionAsync({})`.
+- Reverse geocodes with `Location.reverseGeocodeAsync({ latitude, longitude })`.
+- Stores `coordinates` as `{ latitude, longitude, readableLoc }`.
+- Location string is later built from `readableLoc.name`, `street`, `city`, `region`, `postalCode`, `country`, joined by comma.
+
+Prediction request/response:
+
+- Frontend calls `detectIssues(base64, mimeType)`.
+- Backend forwards `base64Image` and `mimeType` to Gemini model `gemini-2.5-flash-preview-05-20`.
+- Prompt requires JSON array with `issue`, `probability`, `description`, `bounding_box`.
+- `bounding_box` order is `[ymin, xmin, ymax, xmax]` on a 1000x1000 grid.
+- Frontend sorts predictions descending by `probability`.
+- Category chips toggle issue names into a comma-space string.
+
+Bounding-box transformation:
+
+- `ImagePreview.jsx` renders image in a container whose animated height starts around 750/800 and can shrink to 20% of screen height while scrolling.
+- `Animated.Image` style is `width: "100%", height: "100%"`, `resizeMode="cover"`.
+- On layout, only the rendered view width/height are stored.
+- Box placement ignores source image dimensions, cover-crop offsets, EXIF orientation, and original aspect ratio.
+- Formula:
+  - `top = ymin / 1000 * renderedHeight`
+  - `left = xmin / 1000 * renderedWidth`
+  - `width = (xmax - xmin) / 1000 * renderedWidth`
+  - `height = (ymax - ymin) / 1000 * renderedHeight`
+- Flutter parity should apply the same normalized grid to the visible rendered image box. Do not “correct” for intrinsic image size unless accepting changed box placement.
+
+Important migration trap:
+
+- Because the image uses `cover`, any actual image cropping can make boxes visually inaccurate. Reproducing current behavior means reproducing that inaccuracy.
+
+## Report Pipeline
+
+Confirmed report creation flow:
+
+1. `ReportForm.jsx` reads user details synchronously from SecureStore:
+   - `userId = JSON.parse(SecureStore.getItem("userDetails")).id`
+   - `name`
+   - `number`
+2. Generates `rId` at component render time:
+   - `Rid_${new Date().getFullYear()}${uuid.v4().replaceAll("-", "").slice(0, 4)}`
+3. When coordinates change, calls `getReportByLocation(lat, lng)` and alerts if any row is returned.
+4. Submit requires `category` and `name`.
+5. Builds `reportData`:
+   - `reportID`
+   - `userID`
+   - `name`
+   - `number`
+   - `category`
+   - `description`
+   - `location: { lat: coordinates.latitude, lng: coordinates.longitude, loc: locInWords }`
+   - `createdDate: new Date().toISOString()`
+6. Calls `createAndStoreReportData(reportData)` before upload.
+7. Generates PDF with `generatePDF(reportData, image.uri)`.
+8. Sends “report raised” notification request.
+9. Calls `submitReport(...)` but does not await it.
+10. Shows PDF share/save modal.
+
+Local structure:
+
+- `${documentDirectory}reports/${reportID}/image.jpeg`
+- `${documentDirectory}reports/${reportID}/audio.m4a` if audio exists
+- `${documentDirectory}reports/${reportID}/data.json`
+- `${documentDirectory}reports/${reportID}/report.pdf`
+- AsyncStorage `pendingReports` appends `reportID`.
+
+Audio/transcription:
+
+- Recording uses `Audio.RecordingOptionsPresets.HIGH_QUALITY`.
+- Audio mode: `allowsRecordingIOS: true`, `playsInSilentModeIOS: true`.
+- On stop, saves recording URI, starts transcription immediately.
+- Transcription upload uses multipart field `audio`, filename `recording.m4a`, MIME `audio/m4a`.
+- Backend converts input buffer to MP3 using ffmpeg, writes fixed `temp.mp3`, uploads to AssemblyAI `/v2/upload`, starts transcript with `language_detection: true`, `punctuate: true`, `format_text: true`, polls up to 60 attempts with max 5s waits.
+- On success, frontend replaces `description` with `result.result.text`.
+
+Backend report submission:
+
+- Verifies image through Gemini with submitted `category`.
+- Status mapping:
+  - `score > 60`: `Issue Raised`
+  - `score > 5`: `Verification pending`
+  - otherwise: `Invalid Report`
+- Inserts into `reports`:
+  - `Rid`, `priority`, `userID`, `issue`, `description`, `location`, `createdAt`, `imageURL`, `audioURL`, `pdfURL`, `status`
+- Sends follow-up FCM only for `Issue Raised` and `Invalid Report`.
+
+Cloudinary behavior:
+
+- Uses `cloudinary.uploader.upload_stream`.
+- Options:
+  - `resource_type: "auto"`
+  - `public_id: filename.split(".")[0]`
+  - `folder: reportr/reports/{Rid}`
+- Public IDs passed:
+  - `{reportID}_image`
+  - `{reportID}_audio`
+  - `{reportID}_pdf`
+
+Failure behavior:
+
+- Local draft and PDF may exist even if notification/upload fails.
+- If `sendNotification` fails, upload is skipped because it is inside the same `try`.
+- If `submitReport` fails internally, frontend service returns `false`, but caller does not await it, so UI still proceeds.
+- Pending report queue is never drained by inspected code.
+
+## PDF
+
+Confirmed implementation:
+
+- `frontend/services/pdfGeneration.js` uses `pdf-lib`.
+- Loads embedded base64 `PDFTEMPLATE` from `frontend/services/templates/pdfTemplate.js`.
+- Does not use `frontend/assets/templates/PendingReport.pdf`.
+- Does not use `frontend/services/templates/FontTemplate.js` or `@pdf-lib/fontkit`.
+- Template metadata indicates title `PendingReport`, creator/producer `Canva`.
+- Template page box from embedded PDF: approximately `768 x 1083` effective drawing area (`MediaBox [0.0 8.039949 768.0 1091.0399]`).
+
+Text behavior:
+
+- `cleanText()` replaces non-breaking spaces and all non-ASCII characters with spaces.
+- Hindi/Marathi/user-entered non-English text will not render correctly in current output.
+- Default pdf-lib font is used; no explicit font embedding.
+
+Date/time formatting:
+
+- Time: `new Date(createdDate).toLocaleTimeString()`, device/default locale.
+- Date: `new Date(createdDate).toLocaleDateString("en-IN")`.
+
+Field coordinates:
+
+- report ID: x 175, y 795, size 18
+- time: x 550, y 1015, size 20
+- date: x 640, y 1015, size 20
+- name: x 130, y 750, size 20
+- number: x 155, y 700, size 20
+- category: x 80, y 515, size 20
+- description: x 80, y 350, size 20
+- latitude: x 80, y 210, size 20
+- longitude: x 200, y 210, size 20
+- location line 1: x 80, y 185, size 18
+- location line 2: x 80, y 160, size 18
+
+Image placement:
+
+- Reads `imageUri` as base64.
+- Attempts JPEG embed, then PNG fallback.
+- Draws image at x 465, y 610, width 220, height 280.
+- No aspect-ratio preservation logic; image is stretched to fixed dimensions.
+
+Output:
+
+- Ensures `${documentDirectory}reports/${reportID}/`.
+- Writes `${documentDirectory}reports/${reportID}/report.pdf` as base64.
+
+Recommended Flutter reproduction:
+
+- Simplest parity: use Flutter `pdf` package, load the existing template as a PDF background if practical, place text/image at equivalent coordinates, and preserve ASCII cleaning for first parity.
+- If template-as-background is awkward with `pdf`, use the bundled `assets/templates/PendingReport.pdf` as the source template only after visually comparing it with the embedded `PDFTEMPLATE`.
+- Do not add Devanagari font support in the first parity pass unless product decides localized PDFs are required.
+
+## Map
+
+Confirmed current protocol:
+
+React Native to WebView:
+
+- `MapScreen.jsx` loads `frontend/assets/leaflet.html` as a string through Expo Asset/FileSystem.
+- RN sends messages with `webviewRef.current.postMessage(JSON.stringify(...))`.
+- Sent message types:
+  - `{ type: "loadMarkers", markers }`
+  - `{ type: "setView", userLoc }`
+
+WebView/Leaflet receive side:
+
+- `leaflet.html` defines `receiveMessage(event)`.
+- It parses `JSON.parse(event.data)`.
+- `loadMarkers` calls `addDynamicMarkers(data.markers)`.
+- `clearMarkers` exists but is not actively sent by RN.
+- `setView` calls `setView(data.userLoc.lat, data.userLoc.lng, 13)`.
+- It assigns `window.ReactNativeWebView.onMessage = receiveMessage`.
+- Also registers `document.addEventListener("message", receiveMessage)` and `window.addEventListener("message", receiveMessage)`.
+
+WebView to React Native:
+
+- On load, HTML posts `{ type: "mapReady" }`.
+- Marker click:
+  - recenters Leaflet to marker at zoom 16.
+  - posts `{ type: "markerClick", Rid, lat, lng, color }`.
+- RN receives through WebView `onMessage`.
+- RN fetches `getReportData(Rid)`, computes `canResolve` using Haversine distance `< 200`, and opens modal.
+
+Leaflet behavior:
+
+- Initial center `[19.1760, 72.8577]`, zoom `12`.
+- OSM tile URL: `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`.
+- External CDN:
+  - `https://unpkg.com/leaflet@1.9.4/dist/leaflet.css`
+  - `https://unpkg.com/leaflet@1.9.4/dist/leaflet.js`
+  - `https://unpkg.com/leaflet.heat/dist/leaflet-heat.js`
+- User marker has `isUser: true`, blue color, and is excluded from heat layer.
+- Heat layer uses each non-user marker as `[lat, lng, 5]`, radius 10, blur 15, maxZoom 5, green/yellow/orange/red gradient.
+- Default RN filter excludes `Invalid Report`.
+- Polling runs every 5 seconds while tab index is map.
+
+Flutter WebView changes required:
+
+- Keep marker payloads and Leaflet marker logic.
+- Replace `window.ReactNativeWebView.postMessage(...)` with a Flutter JavaScript channel, e.g. `ReportMap.postMessage(...)`.
+- Replace RN-to-WebView `postMessage` with `runJavaScript(...)`, such as calling a JS function `receiveFlutterMessage(jsonString)` or `loadMarkers(markersJson)`.
+- Keep `markerClick` payload unchanged so Dart can call the same backend route.
+- Load HTML from Flutter assets.
+
+Do not redesign:
+
+- The search bar is visual only; no search behavior exists to migrate.
+- Resolution review modal does not call backend.
+
+## Database Findings
+
+Confirmed tables from SQL only:
+
+- `users`
+- `otps`
+- `reports`
+
+Inferred `users` columns:
+
+- `id`: primary key/auto-increment inferred from `result.insertId` and lookup by id.
+- `name`: inserted and selected.
+- `number`: inserted and selected; frontend calls this `number`, backend verify response calls it `phone`.
+- `createdAt`: inserted as `new Date()`.
+- `token`: inserted and selected for FCM.
+
+Inferred `otps` columns:
+
+- `phone`
+- `otp`
+- `expiresAt`
+- `phone` likely unique because `ON DUPLICATE KEY UPDATE` is used, but the actual unique key cannot be confirmed.
+
+Inferred `reports` columns:
+
+- `Rid`: report identifier, queried and inserted.
+- `priority`: inserted from Gemini verification.
+- `userID`: inserted and selected.
+- `issue`: inserted from category and returned to map detail.
+- `description`
+- `location`: JSON string containing at least `lat`, `lng`, `loc`.
+- `createdAt`
+- `imageURL`
+- `audioURL`
+- `pdfURL`
+- `status`
+
+Relationships:
+
+- `reports.userID` logically references `users.id`, but no FK can be confirmed.
+- `users.token` is required for notifications.
+- `otps.phone` relates to login phone number, but no user relation can be confirmed.
+
+Required/nullable fields:
+
+- Confirmed by backend behavior: `submitReport` effectively requires `image`; `sendOTP` requires phone/token; `verifyOTP` requires phone/otp/name.
+- Unknown at DB level: all nullable/required constraints and defaults.
+
+Status values:
+
+- Produced by backend: `Issue Raised`, `Verification pending`, `Invalid Report`.
+- Read/filtered but not produced in this repo: `In Progress`, `Resolved`.
+
+Unknown:
+
+- Table DDL, indexes, collations, decimal/date types, JSON/text column types, cascade rules, and data retention.
+
+## Flutter Dependency List
+
+Smallest sensible initial list based on confirmed requirements:
+
+- `dio`: JSON API calls and multipart upload with exact field/file names and timeouts.
+- `firebase_core`: required before Firebase Messaging.
+- `firebase_messaging`: FCM token acquisition, foreground/background push handling, OTP delivery.
+- `flutter_local_notifications`: foreground notification display and Android channel `default`.
+- `flutter_secure_storage`: secure `userDetails` persistence.
+- `shared_preferences`: `token`, `user-language`, and `pendingReports`.
+- `local_auth`: preserve iOS existing-user biometric prompt.
+- `camera`: camera preview/capture, zoom, flash, front/back switching.
+- `file_picker`: closest match to `expo-document-picker` for image file picking.
+- `native_exif`: mobile EXIF GPS extraction. If it proves insufficient, swap to a maintained EXIF reader during implementation.
+- `geolocator`: foreground GPS and Haversine distance.
+- `geocoding`: reverse geocode to name/street/city/region/postalCode/country equivalents.
+- `record`: M4A/AAC audio recording for transcription/upload.
+- `just_audio`: local audio playback/pause.
+- `path_provider`: document/cache directories and report folder structure.
+- `share_plus`: share/save generated PDF.
+- `pdf`: client-side PDF generation.
+- `webview_flutter`: Leaflet WebView migration with JS channels.
+- `uuid`: reproduce client-side report ID generation.
+- Flutter localization tooling (`flutter_localizations`/`intl` or equivalent): preserve English/Hindi/Marathi strings and saved language behavior.
+
+Defer initially:
+
+- `flutter_map`: not needed if preserving Leaflet WebView.
+- `image_picker`: current picker is document-style; add only if product wants gallery semantics.
+- `flutter_svg`: not needed by current assets.
+- Heavy state management packages: not justified by current app complexity.
+
+## Architecture Validation
+
+Confirmed: the proposed simple architecture is sufficient.
+
+Use:
+
+- `StatefulWidget` for screen-local UI state.
+- `ChangeNotifier` only for session, language, notification readiness, or shared app shell state.
+- Service classes for auth, notifications, API, media, EXIF, location, audio, PDF, local report storage, and map.
+- Simple typed models for user session, prediction, report data, marker, and location info.
+- `IndexedStack` for bottom navigation, matching current persistent tab feel and avoiding unnecessary map/camera rebuilds.
+- A small API layer around `dio`.
+- Simple storage layer wrapping secure storage and preferences.
+
+No need yet for:
+
+- Bloc/Riverpod/Redux.
+- Repository abstraction over every service.
+- Background sync architecture, unless product decides to implement missing pending-report sync.
+- Native map rewrite architecture, unless WebView Leaflet is rejected.
+
+## Remaining Risks
+
+- FCM OTP is fragile because login depends on notification permission/token availability.
+- Token refresh is currently not persisted or sent to backend.
+- iOS auth behavior is not equivalent to Android and may create reports with non-DB user IDs.
+- Multipart upload must preserve exact fields, names, and MIME types.
+- Flutter camera/picker may rotate, compress, or strip metadata differently from Expo.
+- EXIF GPS parsing differs by package and file source.
+- Prediction payloads are large base64 JSON and may hit backend `10mb` limit.
+- Bounding-box placement depends on current flawed rendered-container scaling.
+- PDF output parity depends on matching fixed template coordinates.
+- Current PDF strips non-ASCII text.
+- Backend fixed `temp.mp3` can fail under concurrent transcription.
+- Leaflet depends on CDN and OSM tiles.
+- No database schema is available for reliable migration tests.
+- Pending reports are stored but never retried.
+- Report ID only uses 4 UUID hex chars plus year, so collisions are possible.
+
+## Unresolved Decisions
+
+- iOS login:
+  - Preserve local bypass for parity or require backend OTP after APNs/FCM setup.
+  - Recommendation: preserve for first parity only if iOS parity is required; otherwise normalize to backend OTP as a product/security decision.
+
+- Report upload await behavior:
+  - Preserve current non-awaited call or wait for backend response.
+  - Recommendation: await upload in Flutter and record this as an intentional behavior fix.
+
+- PDF localization:
+  - Preserve ASCII-stripping or embed Devanagari font.
+  - Recommendation: preserve first, then improve if localized PDFs are required.
+
+- Map implementation:
+  - Leaflet WebView or native Flutter map.
+  - Recommendation: keep Leaflet WebView for first migration.
+
+- Offline sync:
+  - Preserve local draft only or implement retry queue.
+  - Recommendation: preserve current behavior for migration; real sync is a separate feature.
+
+- Firebase package ID:
+  - Keep `com.reportr.frontend` and reuse current Firebase app, or create a new Firebase Android app for Flutter.
+
+## Implementation-Ready Migration Order
+
+1. Flutter app shell, config, assets, localization, storage wrappers, and `IndexedStack` bottom tabs.
+2. API client and typed models for all current backend routes.
+3. Firebase Core/Messaging and foreground local notifications, including channel `default`.
+4. Login/session restoration, Android OTP flow, and iOS behavior decision.
+5. Camera capture and image file picking.
+6. EXIF GPS extraction, current-location fallback, reverse geocoding.
+7. Prediction API integration, sorting, category chips, and bounding-box overlay with current scaling.
+8. Report form, local report folder writing, and pending report key append.
+9. Audio recording/playback and transcription upload.
+10. PDF generation and platform sharing.
+11. Report notification request and multipart report upload.
+12. Leaflet WebView asset bridge, marker polling/filtering, report detail modal, distance check, and local resolution review.
+13. Manual Android regression against existing backend.
+
+## First Implementation Task
+
+Create the Flutter skeleton outside the existing `frontend/` and `backend/` code, with:
+
+- app ID decision documented before Firebase setup;
+- backend base URL config;
+- assets copied/declared;
+- English/Hindi/Marathi localization scaffold;
+- secure/preferences storage wrappers;
+- session restoration using `userDetails`;
+- `IndexedStack` tabs matching current order: map, reports, home/camera, analytics, profile;
+- placeholder screens for non-implemented tabs.
+
+Do not start camera/auth/report work until this foundation can cold-start, restore a stored session, and navigate with the same default home tab index.

@@ -1,0 +1,4 @@
+﻿# Local development configuration
+.env
+.env.*
+!.env.example

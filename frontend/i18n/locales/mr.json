@@ -49,6 +49,7 @@
   },
   "map": {
     "searchLocation": "स्थान शोधा...",
+    "gettingLOC":"स्थान आणत आहे",
     "myReports": "माझे अहवाल",
     "allReports": "सर्व अहवाल",
     "filterBy": "श्रेणीनुसार फिल्टर करा",

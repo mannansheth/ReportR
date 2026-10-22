@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "48225244825",
+    "project_id": "reportr-8dddb",
+    "storage_bucket": "reportr-8dddb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:48225244825:android:476fed625f2977bfb9ca08",
+        "android_client_info": {
+          "package_name": "com.reportr.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdzZhptdoQhu4xGJX3rBKCCwf8P35LvSQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

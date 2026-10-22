@@ -35,7 +35,8 @@ const sendNotification = async (token, title, body) => {
         console.log('[FCM] Message accepted by Firebase, ID:', messageId);
         return true;
   } catch (err) {
-    console.error('[FCM] Failed to send:', err);
+    console.error('[FCM] Delivery failed:', err.code || err.message);
+    throw err;
   }
 }
 module.exports = { sendNotification }

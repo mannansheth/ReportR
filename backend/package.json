@@ -15,5 +15,17 @@
     "node-fetch": "^3.3.2",
     "nodemon": "^3.1.10",
     "uuid": "^13.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node scripts/check-integration.js",
+    "start:local": "node scripts/start-local.js",
+    "test:community": "node scripts/check-community.js",
+    "migrate:community": "node scripts/migrate-community.js",
+    "test:verification": "node scripts/check-resolution-verification.js",
+    "test:all": "node scripts/check-integration.js && node scripts/check-community.js && node scripts/check-resolution-verification.js && node scripts/check-private-media.js",
+    "test:private-media": "node scripts/check-private-media.js",
+    "migrate:private-media": "node scripts/migrate-private-media.js",
+    "verify:private-media": "node scripts/check-live-private-media.js"
   }
 }

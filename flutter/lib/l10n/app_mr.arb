@@ -1,0 +1,112 @@
+{
+  "@@locale": "mr",
+  "authWelcome": "ReportR मध्ये आपले स्वागत आहे",
+  "authSubtitle": "आपल्या क्षेत्रातील नागरी समस्यांचा अहवाल द्या",
+  "loginNotImplemented": "विद्यमान OTP प्रक्रियेद्वारे साइन इन करा. तात्पुरती डेवलपमेंट साधने खाली उपलब्ध आहेत.",
+  "enterName": "नाव",
+  "enterPhone": "फोन नंबर",
+  "enterOtp": "OTP",
+  "sendOtp": "OTP पाठवा",
+  "verifyOtp": "OTP पडताळा",
+  "otpSent": "OTP पाठवला",
+  "loginSuccess": "साइन इन झाले",
+  "loginFailed": "लॉगिन अयशस्वी",
+  "invalidPhone": "वैध नाव आणि फोन नंबर भरा.",
+  "invalidOtp": "OTP भरा.",
+  "pushTokenUnavailable": "पुश नोटिफिकेशन टोकन अजून उपलब्ध नाही.",
+  "editLoginDetails": "नाव किंवा फोन बदला",
+  "ok": "सुरू ठेवा",
+  "devOnlyTools": "फक्त डेवलपमेंट साधने",
+  "devOnlyDescription": "माइग्रेशन टेस्टिंगसाठी तात्पुरत्या लोकल-सेशन कृती.",
+  "createDummySession": "डेव डमी सेशन तयार करा",
+  "clearDummySession": "डेव सेशन हटवा",
+  "backendBaseUrlLabel": "बॅकएंड बेस URL: {url}",
+  "@backendBaseUrlLabel": {
+    "placeholders": {
+      "url": {}
+    }
+  },
+  "notConfigured": "कॉन्फिगर केलेले नाही",
+  "systemLanguage": "सिस्टम",
+  "languageEnglish": "English",
+  "languageHindi": "हिन्दी",
+  "languageMarathi": "मराठी",
+  "settingsLanguage": "भाषा",
+  "navMap": "नकाशा",
+  "navReports": "अहवाल",
+  "navHome": "होम",
+  "navAnalytics": "अॅनालिटिक्स",
+  "navProfile": "प्रोफाइल",
+  "homePlaceholderTitle": "होम / कॅमेरा",
+  "homePlaceholderBody": "कॅमेरा आणि अहवाल तयार करणे पुढील टप्प्यात माइग्रेट होईल.",
+  "mapPlaceholderTitle": "नकाशा",
+  "mapPlaceholderBody": "Leaflet नकाशा माइग्रेशन सध्या मुद्दाम पुढे ढकलले आहे.",
+  "reportsPlaceholderTitle": "अहवाल",
+  "reportsPlaceholderBody": "अहवाल यादी या फाउंडेशन टप्प्याचा भाग नाही.",
+  "analyticsPlaceholderTitle": "अॅनालिटिक्स",
+  "analyticsPlaceholderBody": "अॅनालिटिक्स सध्या विद्यमान अॅपप्रमाणे placeholder आहे.",
+  "profilePlaceholderTitle": "प्रोफाइल",
+  "signedInAs": "{name} म्हणून साइन इन",
+  "@signedInAs": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "sessionId": "सेशन ID: {id}",
+  "@sessionId": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "phoneNumberValue": "फोन नंबर: {number}",
+  "@phoneNumberValue": {
+    "placeholders": {
+      "number": {}
+    }
+  },
+  "stateCounter": "स्टेट काउंटर: {count}",
+  "@stateCounter": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "impactTitle": "समुदायातील तुमचे योगदान",
+  "impactSubtitle": "तुमच्या तक्रारी आणि त्यांच्या निराकरणाची प्रगती पाहा.",
+  "impactSubmitted": "सादर केलेले",
+  "impactResolved": "निराकरण झालेले",
+  "impactActive": "सक्रिय",
+  "impactInvalid": "अवैध",
+  "impactResolutionRate": "निराकरण दर",
+  "impactActivity": "अहवालांची हालचाल",
+  "impactActivitySubtitle": "मागील सहा महिन्यांत सादर केलेले अहवाल",
+  "impactStatus": "अहवालाची स्थिती",
+  "impactStatusSubtitle": "तुमच्या अहवालांची सध्याची प्रगती",
+  "impactEmpty": "अद्याप अहवाल नाहीत. होमवरून पहिली तक्रार सादर करा.",
+  "impactIssues": "नोंदवलेल्या समस्या",
+  "impactIssuesSubtitle": "तुमच्या अहवालांवर आधारित श्रेणी",
+  "impactCategoriesEmpty": "अहवाल सादर केल्यावर समस्यांचे विश्लेषण दिसेल.",
+  "impactRefresh": "ताजे करण्यासाठी खाली ओढा",
+  "pageRetry": "पुन्हा प्रयत्न करा",
+  "profileEditName": "तुमचे नाव बदला",
+  "profileFullName": "पूर्ण नाव",
+  "profileNameValidation": "किमान दोन अक्षरे लिहा",
+  "profileSave": "जतन करा",
+  "profileCancel": "रद्द करा",
+  "profileUpdated": "प्रोफाइल अद्ययावत झाली",
+  "profileSignOutQuestion": "साइन आउट करायचे?",
+  "profileSignOutExplanation": "तुमचे अहवाल तुमच्या खात्यात जतन आहेत. फोन नंबर वापरून पुन्हा साइन इन करू शकता.",
+  "profileSignOut": "साइन आउट",
+  "profileSignIn": "प्रोफाइल पाहण्यासाठी साइन इन करा.",
+  "profileAccountDetails": "खात्याचे तपशील",
+  "profileVerifiedPhone": "फोन नंबर",
+  "profilePreferences": "प्राधान्ये",
+  "profileAppLanguage": "अ‍ॅपची भाषा",
+  "profileTipsTitle": "तुमचा अहवाल प्रभावी करा",
+  "profileTips": "समस्येचा स्पष्ट फोटो घ्या, ठिकाणाची खात्री करा आणि आवश्यक तपशील लिहा. अहवालांमध्ये प्रगती आणि विश्लेषणात तुमचे योगदान पाहा.",
+  "profileTagline": "ReportR · एकत्रितपणे उत्तम समुदाय",
+  "impactRaised": "तक्रार नोंदवली",
+  "impactVerification": "पडताळणी प्रलंबित",
+  "impactProgress": "काम सुरू"
+}

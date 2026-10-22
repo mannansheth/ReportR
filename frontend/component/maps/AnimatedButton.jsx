@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { View, Text, TouchableOpacity, Animated, StyleSheet, Alert } from "react-native";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 
-export default function AnimatedButton({disabled}) {
+export default function AnimatedButton({disabled, setHasContributed}) {
   const [clicked, setClicked] = useState(false);
   
   const textOpacity = useRef(new Animated.Value(1)).current;
@@ -37,7 +37,7 @@ export default function AnimatedButton({disabled}) {
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        Alert.alert("Thank you for your contribution.", "Your response is succesfully recorded.")
+        setHasContributed(true);
       })
 
       });

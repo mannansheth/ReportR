@@ -8,13 +8,14 @@ export const detectIssues = async (base64Image, mimeType) => {
       mimeType,
     })
     console.log(response.data);
-    return response.data; 
+    return response.data || [];
   } catch (err) {
-    console.error(err);
+    // console.error(err);
+    return []
   }
 }
 
-export const submitReport = async (reportData) => { 
+export const submitReport = async (reportData) => {
   try {
     const formData = new FormData();
     console.log(reportData.createdDate)
@@ -24,11 +25,11 @@ export const submitReport = async (reportData) => {
     formData.append("number", reportData.number);
     formData.append("category", reportData.category);
     formData.append("description", reportData.description);
-    formData.append("location", JSON.stringify(reportData.location)); 
+    formData.append("location", JSON.stringify(reportData.location));
     formData.append("createdDate", reportData.createdDate);
     if (reportData.image) {
       formData.append("image", {
-        uri:reportData.image, 
+        uri:reportData.image,
         name: "report_image.jpg",
         type: "image/jpeg",
       });
@@ -36,7 +37,7 @@ export const submitReport = async (reportData) => {
 
     if (reportData.audio) {
       formData.append("audio", {
-        uri: reportData.audio, 
+        uri: reportData.audio,
         name: "report_audio.m4a",
         type: "audio/m4a",
       });
@@ -58,7 +59,8 @@ export const submitReport = async (reportData) => {
 
     return response.data;
   } catch (err) {
-    console.error("Error submitting report:", err);
-    throw err;
+    // console.error("Error submitting report:", err);
+    // throw err;
+    return false;
   }
 };

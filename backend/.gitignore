@@ -1,4 +1,6 @@
 .env
 node_modules/
-.json
 firebase-service-key.json
+data/reports/
+
+data/private-media-backups/
