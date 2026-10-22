@@ -30,6 +30,8 @@ npm.cmd run start:local
 
 Set the MySQL credentials and service keys in `backend/.env`. Keep `backend/firebase-service-key.json` beside `backend/server.js` for Firebase Admin notifications. That service account file and `.env` are local credentials and are ignored by Git. The local startup script listens on port `5002` by default; `http://127.0.0.1:5002/` should return `{"Hello":"Working"}` when the server is running.
 
+Download fresh Firebase client configuration from Firebase Console for the app. For Android, place `google-services.json` at `flutter/android/app/google-services.json`; for iOS, place `GoogleService-Info.plist` at `flutter/ios/Runner/GoogleService-Info.plist`. These project-specific files are ignored by Git. Restrict their API keys to the intended app and required APIs, and do not reuse a key that has been exposed publicly.
+
 The project migration scripts are under `backend/scripts/`. Review the applicable SQL files in `backend/migrations/` and the instructions in `backend/COMMUNITY.md` before applying database migrations.
 
 ## Run the Flutter app
