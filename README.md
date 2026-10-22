@@ -17,6 +17,8 @@ ReportR is a civic issue reporting app. The mobile client is built with Flutter,
 - A Firebase Android configuration for push notifications, a Firebase Admin service account for backend notifications, and restricted Google Maps API keys for map tiles.
 - Optional service credentials for Gemini issue analysis, AssemblyAI transcription, and Cloudinary media storage.
 
+The npm and Flutter lockfiles are committed to pin dependency versions. Installed dependency and build-cache directories are ignored and should not be committed.
+
 ## Configure the backend
 
 From the repository root in PowerShell:
