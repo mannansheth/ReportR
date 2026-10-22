@@ -3,6 +3,8 @@
 **/.env.*
 !**/.env.example
 backend/firebase-service-key.json
+**/google-services.json
+**/GoogleService-Info.plist
 
 # Dependencies and generated build output
 node_modules/
