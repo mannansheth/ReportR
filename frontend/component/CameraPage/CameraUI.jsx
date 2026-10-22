@@ -1,7 +1,7 @@
 
 import Slider from "@react-native-community/slider";
 import { CameraView } from "expo-camera";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { AntDesign, Entypo, Ionicons, MaterialIcons, Octicons, Zocial } from "@expo/vector-icons";
 import {
   View,
   TouchableOpacity,
@@ -57,9 +57,9 @@ const CameraUI = ({
         onValueChange={setZoom}
         />
         <TouchableOpacity style={styles.flashBtn} onPress={() => setFlash(flash === 'off' ? 'on' : 'off')}>
-            {flash === 'off' ? 
-            <MaterialIcons name="flash-off" color="white" size={25}/> : 
-            <MaterialIcons name="flash-on" color="white" size={25}/>  
+            {flash !== 'off' ?
+            <Ionicons name="flash-outline" color="white" size={30}/> :
+            <Ionicons name="flash-off-outline" color="white" size={30}/>
             }
         </TouchableOpacity>
         <TouchableOpacity style={styles.captureBtn} onPress={takePicture} />
@@ -71,7 +71,7 @@ const CameraUI = ({
         </TouchableOpacity>
         <TouchableOpacity style={[styles.button, { right: 60 }]}>
             <Button title="" onPress={pickImage}>
-                <Ionicons name="image" size={26} color="white" />
+                <Octicons name="file-media" size={26} color="white" />
             </Button>
         </TouchableOpacity>
     </GestureHandlerRootView>
@@ -94,11 +94,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 40,
-    borderWidth: 1,
+    // borderWidth: 2,
     borderColor: "rgba(255,255,255,0.7)",
     backgroundColor: "transparent",
     position: "absolute",
-    top:80,
+    top:225,
     right: 10,
     alignItems: "center",
     justifyContent: "center",

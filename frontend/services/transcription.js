@@ -24,7 +24,7 @@ export const transcribeDesc = async (audioUri) => {
     // return only the data, not the whole axios response
     return response.data;
   } catch (error) {
-    console.error('Upload failed:', error.response?.data || error.message);
+    // console.error('Upload failed:', error.response?.data || error.message);
     return { success: false, error: error.message };
   }
 };

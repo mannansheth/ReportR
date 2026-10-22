@@ -12,13 +12,17 @@ const uploadToCloudinary = async (file, filename, type, Rid) => {
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload_stream(
       {
-        resource_type: "auto",
-        public_id: filename.split(".")[0],
+        resource_type: type === 'audio' ? 'video' : type === 'pdf' ? 'raw' : 'image',
+        type: type === 'audio' || type === 'pdf' ? 'authenticated' : 'upload',
+        public_id: type === 'pdf' ? `${filename.split('.')[0]}.pdf` : filename.split('.')[0],
         folder: `reportr/reports/${Rid}`,
       },
       (error, result) => {
         if (error) reject(error);
-        else resolve(result);
+        else {
+          if (type === 'audio' || type === 'pdf') result.secure_url = require('./privateMedia').unsignedDeliveryUrl(result.secure_url);
+          resolve(result);
+        }
       }
     ).end(fileBuffer);
   });

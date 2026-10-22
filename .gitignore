@@ -1,0 +1,30 @@
+# Local credentials and environment configuration
+**/.env
+**/.env.*
+!**/.env.example
+backend/firebase-service-key.json
+
+# Dependencies and generated build output
+node_modules/
+**/.dart_tool/
+**/build/
+**/.gradle/
+**/local.properties
+**/.idea/
+**/*.iml
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+.expo/
+frontend/.expo/
+
+# Local tooling and generated QA output
+.DS_Store
+Thumbs.db
+*.log
+output/pdf/
+
+# Packaged applications
+*.apk
+*.aab
+*.ipa

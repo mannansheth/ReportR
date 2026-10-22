@@ -1,25 +1,25 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useState, useRef, useEffect } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Animated, Modal } from "react-native";
-
+import * as SecureStore from 'expo-secure-store'
 const options =  [
+  {"color": "rgba(255, 255, 255, 1)", "label": "My reports"},
+  {"color": "rgba(9, 255, 0, 1)", "label": "Resolved"},
   {"color": "rgba(255, 187, 0, 1)", "label": "In Progress"},
   {"color": "rgba(40, 0, 121, 1)", "label": "Issue Raised"},
   {"color": "rgba(0, 0, 0, 1)", "label": "Verification pending"},
   {"color": "rgba(197, 0, 0, 1)", "label": "Invalid Report"}, 
 ]
 
-export default function CustomDropdown( {setMarkers, userLoc, markers}) {
+export default function CustomDropdown( {selected, setFilter}) {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(null);
-
   const dropdownAnim = useRef(new Animated.Value(0)).current; // initial height 0
 
   const toggleDropdown = () => {
     if (!open) {
       setOpen(true);
       Animated.timing(dropdownAnim, {
-        toValue: 150, // height of dropdown
+        toValue: 220, // height of dropdown
         duration: 300,
         useNativeDriver: false,
       }).start();
@@ -33,12 +33,8 @@ export default function CustomDropdown( {setMarkers, userLoc, markers}) {
   };
 
   const handleSelect = (option) => {
-    setSelected(option);
-    setMarkers(
-      userLoc
-        ? [userLoc, ...markers.filter(m => m.status === option.label)]
-        : markers.filter(m => m.status === option.label)
-    );
+    setFilter(option);
+
     Animated.timing(dropdownAnim, {
       toValue: 0,
       duration: 150,
@@ -59,8 +55,7 @@ export default function CustomDropdown( {setMarkers, userLoc, markers}) {
         </TouchableOpacity>
           {selected && 
             <TouchableOpacity style={{backgroundColor:"white", padding:6}} onPress={() => {
-              setSelected(null);
-              setMarkers([...markers.filter(m => m.status !== "Invalid Report"), userLoc])
+              setFilter(null);
             }}>
               <MaterialIcons name="close" size={20} />
 

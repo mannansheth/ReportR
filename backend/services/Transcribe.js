@@ -37,20 +37,15 @@ async function transcribeAudio(buffer) {
   }
 
   try {
-    const mp3Buffer = await bufferToMp3(buffer);
-    const filePath = `temp.mp3`;
-    fs.writeFileSync(filePath, mp3Buffer);
 
-    const form = new FormData();
-    form.append('file', fs.createReadStream(filePath));
 
 
     const uploadResponse = await axios.post(
       'https://api.assemblyai.com/v2/upload',
-      form,
+      buffer,
       {
         headers: {
-          ...form.getHeaders(),
+          "Content-Type": "application/octet-stream",
           'Authorization': ASSEMBLY_API_KEY
         }
       }

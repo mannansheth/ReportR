@@ -10,6 +10,7 @@ export const sendNotification = async (Rid, name, userId) => {
     })
     return response.data.status;
   } catch (err) {
-    console.error(err);
+    // console.error(err);
+    throw err;
   }
 }

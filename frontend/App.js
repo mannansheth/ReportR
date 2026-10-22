@@ -8,11 +8,12 @@ import MainApp from "./pages/MainApp";
 import { useEffect, useState } from "react";
 import Login from "./pages/Login";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { PermissionsAndroid, Platform } from "react-native";
+import { PermissionsAndroid, Platform, View } from "react-native";
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from 'expo-secure-store';
 import './i18n'
+import LanguageSwitcher from "./component/LanguageSwitcher";
 let messaging;
 if (Platform.OS === 'android') {
   messaging = require('@react-native-firebase/messaging').default;
@@ -28,7 +29,7 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   useEffect(() => {
-
+      //SecureStore.deleteItemAsync("userDetails")
       if (Platform.OS === 'android') {
         registerFCMToken();
         Notifications.setNotificationChannelAsync('default', {
@@ -94,6 +95,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView>
+        <View style={{position:"absolute", top:60, right:-10, zIndex:99999}}>
+                <LanguageSwitcher />
+        </View>
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Login" component={LoginScreen} />

@@ -1,0 +1,112 @@
+{
+  "@@locale": "en",
+  "authWelcome": "Welcome to ReportR",
+  "authSubtitle": "Report civic issues in your area",
+  "loginNotImplemented": "Sign in with the existing OTP flow. Temporary development tools are available below.",
+  "enterName": "Name",
+  "enterPhone": "Phone number",
+  "enterOtp": "OTP",
+  "sendOtp": "Send OTP",
+  "verifyOtp": "Verify OTP",
+  "otpSent": "OTP sent",
+  "loginSuccess": "Signed in",
+  "loginFailed": "Login failed",
+  "invalidPhone": "Enter a valid name and phone number.",
+  "invalidOtp": "Enter the OTP.",
+  "pushTokenUnavailable": "Push notification token is not available yet.",
+  "editLoginDetails": "Edit name or phone",
+  "ok": "Continue",
+  "devOnlyTools": "Dev-only tools",
+  "devOnlyDescription": "Temporary local-session actions for migration testing.",
+  "createDummySession": "Create dev dummy session",
+  "clearDummySession": "Clear dev session",
+  "backendBaseUrlLabel": "Backend base URL: {url}",
+  "@backendBaseUrlLabel": {
+    "placeholders": {
+      "url": {}
+    }
+  },
+  "notConfigured": "not configured",
+  "systemLanguage": "System",
+  "languageEnglish": "English",
+  "languageHindi": "Hindi",
+  "languageMarathi": "Marathi",
+  "settingsLanguage": "Language",
+  "navMap": "Map",
+  "navReports": "Reports",
+  "navHome": "Home",
+  "navAnalytics": "Analytics",
+  "navProfile": "Profile",
+  "homePlaceholderTitle": "Home / Camera",
+  "homePlaceholderBody": "Camera and report creation will be migrated in a later phase.",
+  "mapPlaceholderTitle": "Map",
+  "mapPlaceholderBody": "Leaflet map migration is intentionally deferred.",
+  "reportsPlaceholderTitle": "Reports",
+  "reportsPlaceholderBody": "Report list functionality is not part of this foundation phase.",
+  "analyticsPlaceholderTitle": "Analytics",
+  "analyticsPlaceholderBody": "Analytics remains a placeholder, matching the current app.",
+  "profilePlaceholderTitle": "Profile",
+  "signedInAs": "Signed in as {name}",
+  "@signedInAs": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "sessionId": "Session ID: {id}",
+  "@sessionId": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "phoneNumberValue": "Phone Number: {number}",
+  "@phoneNumberValue": {
+    "placeholders": {
+      "number": {}
+    }
+  },
+  "stateCounter": "State counter: {count}",
+  "@stateCounter": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "impactTitle": "Your community impact",
+  "impactSubtitle": "Track the issues you raise and the progress toward resolution.",
+  "impactSubmitted": "Submitted",
+  "impactResolved": "Resolved",
+  "impactActive": "Active",
+  "impactInvalid": "Invalid",
+  "impactResolutionRate": "Resolution rate",
+  "impactActivity": "Reporting activity",
+  "impactActivitySubtitle": "Reports submitted over the last six months",
+  "impactStatus": "Report status",
+  "impactStatusSubtitle": "Current progress across your reports",
+  "impactEmpty": "No reports yet. Submit your first issue from Home.",
+  "impactIssues": "Issues reported",
+  "impactIssuesSubtitle": "Categories based on your submitted reports",
+  "impactCategoriesEmpty": "Your issue breakdown will appear after you submit a report.",
+  "impactRefresh": "Pull down to refresh",
+  "pageRetry": "Try again",
+  "profileEditName": "Edit your name",
+  "profileFullName": "Full name",
+  "profileNameValidation": "Enter at least two characters",
+  "profileSave": "Save",
+  "profileCancel": "Cancel",
+  "profileUpdated": "Profile updated",
+  "profileSignOutQuestion": "Sign out?",
+  "profileSignOutExplanation": "Your submitted reports are saved to your account. You can sign back in with your phone number.",
+  "profileSignOut": "Sign out",
+  "profileSignIn": "Sign in to view your profile.",
+  "profileAccountDetails": "Account details",
+  "profileVerifiedPhone": "Phone number",
+  "profilePreferences": "Preferences",
+  "profileAppLanguage": "App language",
+  "profileTipsTitle": "Make your report count",
+  "profileTips": "Capture a clear photo of the issue, confirm its location, and describe what needs attention. Follow progress in Reports and see your impact in Analytics.",
+  "profileTagline": "ReportR · Better communities, together",
+  "impactRaised": "Issue raised",
+  "impactVerification": "Verification pending",
+  "impactProgress": "In progress"
+}
